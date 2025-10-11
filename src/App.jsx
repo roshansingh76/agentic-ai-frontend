@@ -1,10 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react'
+import websocketService from './services/websocket'
+import StreamingMessage from './components/StreamingMessage'
+import ConnectionStatus from './components/ConnectionStatus'
 
 export default function App() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState('disconnected')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -14,7 +19,7 @@ export default function App() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, streamingContent])
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -23,27 +28,90 @@ export default function App() {
     }
   }, [input])
 
+  useEffect(() => {
+    const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080';
+
+    const unsubscribeMessage = websocketService.onMessage((data) => {
+      if (data.type === 'stream') {
+        setStreamingContent(prev => prev + (data.content || ''))
+      } else if (data.type === 'end') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: streamingContent + (data.content || '')
+        }])
+        setStreamingContent('')
+        setIsStreaming(false)
+      } else if (data.type === 'error') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Error: ${data.message || 'An error occurred'}`
+        }])
+        setStreamingContent('')
+        setIsStreaming(false)
+      }
+    })
+
+    const unsubscribeStatus = websocketService.onStatus((status) => {
+      setConnectionStatus(status)
+    })
+
+    const unsubscribeError = websocketService.onError((error) => {
+      console.error('WebSocket error:', error)
+    })
+
+    websocketService.connect(wsUrl)
+
+    return () => {
+      unsubscribeMessage()
+      unsubscribeStatus()
+      unsubscribeError()
+      websocketService.disconnect()
+    }
+  }, [streamingContent])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isStreaming) return
 
     const userMessage = input.trim()
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setIsLoading(true)
+    setIsStreaming(true)
+    setStreamingContent('')
 
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'This is a demo response. Connect your backend to enable real AI responses.'
-      }])
-      setIsLoading(false)
-    }, 1000)
+    if (websocketService.isConnected()) {
+      websocketService.send({
+        type: 'message',
+        content: userMessage
+      })
+    } else {
+      setTimeout(() => {
+        const demoResponse = 'This is a demo streaming response. To enable real AI responses with WebSocket streaming, configure your backend WebSocket server.\n\nThe WebSocket service is ready and will automatically connect when a server is available at the configured endpoint.'
+
+        let index = 0
+        const streamInterval = setInterval(() => {
+          if (index < demoResponse.length) {
+            setStreamingContent(prev => prev + demoResponse[index])
+            index++
+          } else {
+            clearInterval(streamInterval)
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: demoResponse
+            }])
+            setStreamingContent('')
+            setIsStreaming(false)
+          }
+        }, 20)
+      }, 300)
+    }
   }
 
   const startNewChat = () => {
     setMessages([])
     setInput('')
+    setStreamingContent('')
+    setIsStreaming(false)
   }
 
   return (
@@ -71,6 +139,7 @@ export default function App() {
         </div>
 
         <div className="sidebar-footer">
+          <ConnectionStatus status={connectionStatus} />
           <div className="user-menu">
             <div className="user-avatar">U</div>
             <span>User</span>
@@ -126,14 +195,18 @@ export default function App() {
                 </div>
               </div>
             ))}
-            {isLoading && (
+            {isStreaming && (
               <div className="msg-wrapper assistant">
                 <div className="msg-container">
                   <div className="msg-avatar">AI</div>
                   <div className="msg-content">
-                    <div className="thinking">
-                      <span></span><span></span><span></span>
-                    </div>
+                    {streamingContent ? (
+                      <StreamingMessage content={streamingContent} isStreaming={true} />
+                    ) : (
+                      <div className="thinking">
+                        <span></span><span></span><span></span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -158,7 +231,7 @@ export default function App() {
                 placeholder="Message ChatGPT..."
                 rows="1"
               />
-              <button type="submit" disabled={!input.trim() || isLoading}>
+              <button type="submit" disabled={!input.trim() || isStreaming}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                 </svg>

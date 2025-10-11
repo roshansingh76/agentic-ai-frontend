@@ -110,6 +110,37 @@ body {
 .sidebar-footer {
   border-top: 1px solid #e5e5e5;
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.connection-status svg {
+  flex-shrink: 0;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .user-menu {
@@ -210,12 +241,15 @@ body {
   padding: 16px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
 }
 
 .prompt-card:hover {
   background: #f3f4f6;
   border-color: #d1d5db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .prompt-title {
@@ -240,6 +274,18 @@ body {
 .msg-wrapper {
   width: 100%;
   padding: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .msg-wrapper.user {
@@ -281,6 +327,8 @@ body {
   line-height: 1.75;
   color: #0d0d0d;
   padding-top: 6px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .thinking {
@@ -336,12 +384,12 @@ body {
   border: 1px solid #d1d5db;
   border-radius: 24px;
   padding: 12px 16px;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-wrapper:focus-within {
   background: #ffffff;
-  border-color: #9ca3af;
+  border-color: #10a37f;
   box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
 }
 
@@ -367,23 +415,30 @@ body {
   height: 32px;
   border-radius: 8px;
   border: none;
-  background: #0d0d0d;
+  background: #10a37f;
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
 }
 
 .input-wrapper button:hover:not(:disabled) {
-  background: #2d2d2d;
+  background: #0d8a6a;
+  transform: scale(1.05);
+}
+
+.input-wrapper button:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .input-wrapper button:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+  transform: scale(1);
 }
 
 .input-footer {
@@ -391,6 +446,34 @@ body {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 12px;
+}
+
+.streaming-content {
+  display: inline;
+  position: relative;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.cursor-blink {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #0d0d0d;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  50.1%, 100% {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 768px) {
