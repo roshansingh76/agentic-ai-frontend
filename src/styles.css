@@ -1,0 +1,5 @@
+body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 2rem; background: #f7f9fc; color: #0f172a }
+.app { max-width: 720px; margin: 0 auto; background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(12, 17, 30, 0.06) }
+button { padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #2563eb; color: #fff; cursor: pointer }
+pre { background: #0f172a; color: #fff; padding: 1rem; border-radius: 6px; margin-top: 1rem }
+code { background: #eef2ff; padding: 0.1rem 0.3rem; border-radius: 4px }
