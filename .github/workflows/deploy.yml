@@ -41,8 +41,8 @@ jobs:
             ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.COMMIT_SHA }}
             ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
-      # 5️⃣ Ensure deploy folder exists + install Docker if missing
-      - name: Prepare server (create folder + install Docker)
+      # 5️⃣ Ensure deploy folder exists
+      - name: Prepare server directory
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -50,23 +50,18 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
-            # Create directory if missing
-            sudo mkdir -p ${{ env.DEPLOY_PATH }}
-            cd ${{ env.DEPLOY_PATH }}
-
-            # Install Docker and Docker Compose if not installed
-            if ! command -v docker &> /dev/null
-            then
-              echo "Installing Docker..."
-              sudo apt update
-              sudo apt install -y docker.io docker-compose
-              sudo systemctl enable docker
-              sudo usermod -aG docker $USER
+            set -e
+            DEPLOY_PATH=${{ env.DEPLOY_PATH }}
+            echo "Checking for deploy directory at $DEPLOY_PATH..."
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "Directory not found. Creating..."
+              sudo mkdir -p $DEPLOY_PATH
+              echo "✅ Directory created successfully!"
+            else
+              echo "✅ Directory already exists!"
             fi
 
-            echo "Server preparation complete ✅"
-
-      # 6️⃣ Upload docker-compose.yml from repo to server
+      # 6️⃣ Upload docker-compose.yml (overwrite safely)
       - name: Upload docker-compose.yml
         uses: appleboy/scp-action@v0.1.6
         with:
@@ -76,7 +71,7 @@ jobs:
           source: "docker-compose.yml"
           target: "${{ env.DEPLOY_PATH }}/"
 
-      # 7️⃣ Deploy containers automatically
+      # 7️⃣ Deploy new containers safely
       - name: Deploy new image
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -85,12 +80,24 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
+            set -e
             cd ${{ env.DEPLOY_PATH }}
+            echo "Verifying docker-compose.yml exists..."
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml not found in $PWD"
+              exit 1
+            fi
+
             echo "Pulling latest image..."
             docker compose pull
-            echo "Restarting containers..."
+
+            echo "Recreating containers..."
             docker compose up -d --remove-orphans
-            echo "Cleaning up old Docker images..."
-            docker image prune -af
+
+            echo "Pruning old images..."
+            docker image prune -af || true
+
+            echo "Listing running containers..."
             docker ps
+
             echo "✅ Deployment successful!"
