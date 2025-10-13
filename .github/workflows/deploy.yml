@@ -46,7 +46,83 @@ jobs:
       # 5️⃣ Deploy to VPS via SSH + Docker Compose
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
+        with:name: 🚀 Deploy Frontend (AgenticAI)
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+
+env:
+  IMAGE_NAME: react-agenticai
+  REGISTRY: docker.io
+  DEPLOY_PATH: /var/www/html/react-agenticai
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Get short Git commit SHA
+      - name: Set short SHA
+        run: echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # 3️⃣ Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4️⃣ Build & Push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.COMMIT_SHA }}
+            ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+      # 5️⃣ Ensure deploy folder exists
+   
+
+      # 7️⃣ Deploy new containers safely
+      - name: Deploy new image
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            echo "Verifying docker-compose.yml exists..."
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml not found in $PWD"
+              exit 1
+            fi
+
+            echo "Pulling latest image..."
+            docker compose pull
+
+            echo "Recreating containers..."
+            docker compose up -d --remove-orphans
+
+            echo "Pruning old images..."
+            docker image prune -af || true
+
+            echo "Listing running containers..."
+            docker ps
+
+            echo "✅ Deployment successful!"
+
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
