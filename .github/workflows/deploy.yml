@@ -55,7 +55,7 @@ jobs:
             echo "Checking for deploy directory at $DEPLOY_PATH..."
             if [ ! -d "$DEPLOY_PATH" ]; then
               echo "Directory not found. Creating..."
-              sudo mkdir -p $DEPLOY_PATH
+              mkdir -p $DEPLOY_PATH
               echo "✅ Directory created successfully!"
             else
               echo "✅ Directory already exists!"
