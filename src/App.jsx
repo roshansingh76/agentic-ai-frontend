@@ -10,8 +10,18 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const streamingContentRef = useRef('')
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+
+  // Helper to append to streaming content and keep a ref in sync
+  const appendStreamingContent = (chunk) => {
+    setStreamingContent(prev => {
+      const next = prev + (chunk || '')
+      streamingContentRef.current = next
+      return next
+    })
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -26,20 +36,40 @@ export default function App() {
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
     }
-  }, [input])
 
-  useEffect(() => {
-    const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080';
+    const callLogin = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/agenticai/api/v1/user/login', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        console.log('Login response:', data)
+        // optionally update state based on response:
+        // setConnectionStatus('connected')
+      } catch (err) {
+        console.error('Login failed:', err)
+      }
+    }
+
+    // Call login once on mount
+    callLogin()
+
+    // Setup websocket handlers
+    const wsUrl = 'ws://localhost:8000/agenticai/api/v1/user/login'
 
     const unsubscribeMessage = websocketService.onMessage((data) => {
       if (data.type === 'stream') {
-        setStreamingContent(prev => prev + (data.content || ''))
+        appendStreamingContent(data.content || '')
+        setIsStreaming(true)
       } else if (data.type === 'end') {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: streamingContent + (data.content || '')
+          content: streamingContentRef.current + (data.content || '')
         }])
         setStreamingContent('')
+        streamingContentRef.current = ''
         setIsStreaming(false)
       } else if (data.type === 'error') {
         setMessages(prev => [...prev, {
@@ -47,6 +77,7 @@ export default function App() {
           content: `Error: ${data.message || 'An error occurred'}`
         }])
         setStreamingContent('')
+        streamingContentRef.current = ''
         setIsStreaming(false)
       }
     })
@@ -62,55 +93,47 @@ export default function App() {
     websocketService.connect(wsUrl)
 
     return () => {
-      unsubscribeMessage()
-      unsubscribeStatus()
-      unsubscribeError()
+      if (typeof unsubscribeMessage === 'function') unsubscribeMessage()
+      if (typeof unsubscribeStatus === 'function') unsubscribeStatus()
+      if (typeof unsubscribeError === 'function') unsubscribeError()
       websocketService.disconnect()
     }
-  }, [streamingContent])
+  }, [])
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!input.trim() || isStreaming) return
 
     const userMessage = input.trim()
-    setInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+    setInput('')
+
+    // Demo streaming reply (replace with real streaming logic)
+    const demoResponse = 'This is a demo response from the assistant.'
     setIsStreaming(true)
     setStreamingContent('')
+    streamingContentRef.current = ''
 
-    if (websocketService.isConnected()) {
-      websocketService.send({
-        type: 'message',
-        content: userMessage
-      })
-    } else {
-      setTimeout(() => {
-        const demoResponse = 'This is a demo streaming response. To enable real AI responses with WebSocket streaming, configure your backend WebSocket server.\n\nThe WebSocket service is ready and will automatically connect when a server is available at the configured endpoint.'
-
-        let index = 0
-        const streamInterval = setInterval(() => {
-          if (index < demoResponse.length) {
-            setStreamingContent(prev => prev + demoResponse[index])
-            index++
-          } else {
-            clearInterval(streamInterval)
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: demoResponse
-            }])
-            setStreamingContent('')
-            setIsStreaming(false)
-          }
-        }, 20)
-      }, 300)
-    }
+    let index = 0
+    const interval = setInterval(() => {
+      if (index < demoResponse.length) {
+        appendStreamingContent(demoResponse[index])
+        index++
+      } else {
+        clearInterval(interval)
+        setMessages(prev => [...prev, { role: 'assistant', content: demoResponse }])
+        setStreamingContent('')
+        streamingContentRef.current = ''
+        setIsStreaming(false)
+      }
+    }, 20)
   }
 
   const startNewChat = () => {
     setMessages([])
     setInput('')
     setStreamingContent('')
+    streamingContentRef.current = ''
     setIsStreaming(false)
   }
 

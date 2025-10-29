@@ -1,8 +1,8 @@
-### Multi-stage build: build with Node (Vite) then serve with nginx
+# Multi-stage build: build with Node (Vite) then serve with nginx
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --silent
+RUN npm ci --silent
 COPY . .
 RUN npm run build
 

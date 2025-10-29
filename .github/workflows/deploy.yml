@@ -57,3 +57,4 @@ jobs:
             echo "Pruning old images..."
             docker image prune -af
             docker ps
+            echo "Deployment completed successfully."            
