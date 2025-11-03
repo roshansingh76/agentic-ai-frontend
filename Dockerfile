@@ -1,18 +1,37 @@
-# Stage 1: Build React app
-FROM node:18-alpine as build
+# Build stage
+FROM node:22-alpine AS build
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm ci
+
+# Install dependencies
+RUN npm ci --silent --legacy-peer-deps
+
+# Copy source code
 COPY . .
+
+# Build the app
 RUN npm run build
 
-# Stage 2: Serve with nginx
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
+# Production stage
+FROM nginx:stable-alpine
 
-# Add curl and use it for health check
-RUN apk add --no-cache curl
-HEALTHCHECK CMD curl -fs http://localhost:80/ || exit 1
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built files
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf || true
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
+EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
