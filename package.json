@@ -1,7 +1,6 @@
 {
   "name": "agentic-ai-frontend",
   "version": "0.1.0",
-  "homepage": "/react/",
   "private": true,
   "scripts": {
     "dev": "vite",
