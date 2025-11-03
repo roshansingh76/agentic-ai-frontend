@@ -1,6 +1,7 @@
 {
   "name": "agentic-ai-frontend",
   "version": "0.1.0",
+  "homepage": "https://srv1041533.hstgr.cloud/react/",
   "private": true,
   "scripts": {
     "dev": "vite",
