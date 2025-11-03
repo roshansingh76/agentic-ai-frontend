@@ -1,8 +1,41 @@
+# Dependencies
 node_modules
+
+# Build output
 dist
+build
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Version control
 .git
 .gitignore
 
-# local dev
+# IDE
 .vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+*.md
+LICENSE
+Dockerfile
+docker-compose*.yml
